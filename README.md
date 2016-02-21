@@ -1,0 +1,2 @@
+# DroolsProjects
+Sample Drools Projects.

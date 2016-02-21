@@ -1,0 +1,41 @@
+package org.drools.camel;
+
+import org.plugtree.examples.model.Person;
+import org.plugtree.examples.model.RankedPerson;
+
+
+query getAllPersons
+    $person: Person()
+end
+
+rule "Update Ranking for persons between 21 and 30"
+when
+	$p: Person(age >= 21 && < 30, ranking == 0)
+then
+	
+	modify($p){
+            setRanking(10);
+        };
+
+end
+
+rule "Update Person Ranking for persons over 30"
+when
+	$p: Person(age >= 30, ranking == 0)
+then
+
+	modify($p){
+            setRanking(20);
+        };
+
+end
+
+rule "Approve Person Ranking"
+when
+	$p: Person(ranking != 0)
+then
+
+	insert(new RankedPerson($p, true));
+
+end
+

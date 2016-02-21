@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:camel="http://camel.apache.org/schema/spring"
+	xmlns:drools="http://drools.org/schema/drools-spring"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+       					http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       					http://drools.org/schema/drools-spring drools-spring.xsd">
+
+	<bean id="serviceManager" class="org.drools.vsm.local.ServiceManagerLocalClient" />
+
+	<drools:kbase id="kbase1" serviceManager="serviceManager">
+		<drools:resource type="DRL" source="classpath:rules/rules.drl"/>
+	</drools:kbase>
+	
+	<drools:ksession id="ksession1" type="stateful" kbase="kbase1" serviceManager="serviceManager"/>
+
+     <bean id="droolsContextInitProcessor" class="org.drools.pipeline.camel.DroolsContextInitProcessor" >
+         <constructor-arg  ref="serviceManagerPipelineContextImpl" />
+    </bean>
+
+    <bean id="xmlNodeTransformer" class="org.drools.pipeline.camel.ToXmlNodeTransformer" />
+        
+	
+    <bean id="resultHandler" class="org.plugtree.examples.ResultHandlerImpl" />
+	
+    <bean id="xstreamStrategy" class="org.drools.pipeline.camel.helper.MyXstreamLookupStrategy" />
+    
+    <bean id="camelXStreamFromXmlVsmTransformer" class="org.drools.pipeline.camel.CamelXStreamFromXmlVsmTransformer" >
+        <constructor-arg ref="xstreamStrategy" />
+    </bean>
+	
+    <bean id="serviceManagerPipelineContextImpl" class="org.drools.runtime.pipeline.impl.ServiceManagerPipelineContextImpl">
+        <constructor-arg index="0" ref="serviceManager" />
+        <constructor-arg index="1"><null/></constructor-arg>
+        <constructor-arg index="2" ref="resultHandler" />
+    </bean>
+	
+  
+	
+    <bean id="batchExecutorProcessor" class="org.drools.pipeline.camel.BatchExecutorProcessor" />
+	
+    <bean id="camelXStreamToXmlVsmTransformer" class="org.drools.pipeline.camel.CamelXStreamToXmlVsmTransformer" />
+	
+    <bean id="assignResultProcessor" class="org.drools.pipeline.camel.AssignResultProcessor" />
+    
+    <bean id="executeResultProcessor" class="org.drools.pipeline.camel.ExecuteResultProcessor" />
+    
+    <bean id="pipeline" class="org.drools.pipeline.camel.CamelServiceManagerPipelineImpl">
+        <constructor-arg index="0" ref="serviceManager" />
+        <constructor-arg index="1" ref="MyCamelContext" />
+    </bean>
+    
+    <camel:camelContext id="MyCamelContext">
+        <camel:route>
+            <camel:from uri="direct:start"/>
+            <camel:process ref="droolsContextInitProcessor"/>
+            <camel:process ref="xmlNodeTransformer" />
+            <camel:to uri="direct:xstreamTransformer" />
+        </camel:route>
+        <camel:route>
+            <camel:from uri="direct:xstreamTransformer" />
+            <camel:process ref="camelXStreamFromXmlVsmTransformer" />
+            <camel:to uri="direct:executor" />
+        </camel:route>
+        <camel:route>
+            <camel:from uri="direct:executor" />
+            <camel:process ref="batchExecutorProcessor" />
+            <camel:to uri="direct:xstreamTransformerResult" />
+        </camel:route>
+        <camel:route>
+            <camel:from uri="direct:xstreamTransformerResult" />
+            <camel:process ref="camelXStreamToXmlVsmTransformer" />
+            <camel:to uri="direct:finalResult" />
+        </camel:route>
+        <camel:route>
+            <camel:from uri="direct:finalResult" />
+            <camel:process ref="assignResultProcessor" />
+            <camel:to uri="direct:executeResult" />
+        </camel:route>
+        <camel:route>
+            <camel:from uri="direct:executeResult" />
+            <camel:process ref="executeResultProcessor" />
+            <camel:to uri="log:org.apache.camel.example.result?level=INFO" />
+        </camel:route>
+    </camel:camelContext>
+
+</beans>

@@ -1,15 +1,14 @@
-package src
- 
-//import com.sample.DroolsTest.Message;
-import Main.MainDroolsClass.Message;
+package com.sample
 
-import 
+//import com.sample.DroolsTest.Message;
+import BusinessLogic.BusinessClass.Message;
+
  
 rule "Hello World"
     when
         m : Message( status == Message.HELLO, myMessage : message )
     then
-        System.out.println( myMessage );
+        //System.out.println( myMessage );
         m.setMessage( "Goodbye cruel world" );
         m.setStatus( Message.GOODBYE );
         update( m );
